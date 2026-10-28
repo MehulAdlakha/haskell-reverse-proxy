@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aenebris - Functional Reverse Proxy & Security Gateway</title>
+  <style>
+    :root {
+      --bg: #090814;
+      --panel: #110e24;
+      --border: rgba(139, 92, 246, 0.25);
+      --accent: #8b5cf6;
+      --cyan: #06b6d4;
+      --green: #10b981;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      padding: 30px 20px;
+      min-height: 100vh;
+    }
+    .container { max-width: 1050px; margin: 0 auto; }
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-bottom: 20px; margin-bottom: 25px;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo { font-size: 24px; font-weight: 800; color: #c4b5fd; display: flex; align-items: center; gap: 10px; }
+    .badge { background: rgba(139, 92, 246, 0.15); border: 1px solid var(--accent); color: #c4b5fd; padding: 5px 12px; border-radius: 9999px; font-size: 12px; font-weight: 700; }
+    .grid { display: grid; grid-template-columns: 350px 1fr; gap: 20px; }
+    @media (max-width: 850px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    .card h3 { font-size: 15px; margin-bottom: 14px; color: #c4b5fd; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 600; }
+    input, select { width: 100%; background: #090814; border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 9px 12px; color: #fff; font-size: 13px; outline: none; }
+    input:focus { border-color: var(--accent); }
+    .action-btn { width: 100%; background: linear-gradient(135deg, #8b5cf6, #6d28d9); border: none; color: #fff; font-weight: 700; padding: 11px; border-radius: 8px; cursor: pointer; transition: 0.2s; margin-top: 8px; font-size: 13px; }
+    .action-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+    .terminal { background: #030208; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 14px; height: 380px; overflow-y: auto; font-family: monospace; font-size: 12px; line-height: 1.5; color: #e2e8f0; }
+    .term-line { margin-bottom: 5px; }
+    .ok-status { color: var(--green); font-weight: 700; }
+
+    /* Floating AI Copilot Widget */
+    .cyber-ai-widget-root { position: fixed; bottom: 24px; right: 24px; z-index: 99999; }
+    .cyber-ai-trigger {
+      display: flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, #8b5cf6, #5b21b6);
+      color: #fff; border: 1px solid rgba(139, 92, 246, 0.6);
+      padding: 12px 18px; border-radius: 9999px;
+      cursor: pointer; font-weight: 700; font-size: 13px;
+      box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+      outline: none; transition: 0.2s;
+    }
+    .cyber-ai-trigger:hover { transform: scale(1.04); }
+    .cyber-ai-modal {
+      position: absolute; bottom: 56px; right: 0;
+      width: 440px; max-width: calc(100vw - 32px); height: 580px;
+      background: rgba(17, 14, 36, 0.96); backdrop-filter: blur(20px);
+      border: 1px solid var(--border); border-radius: 14px;
+      display: none; flex-direction: column; overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    }
+    .cyber-ai-modal.active { display: flex; }
+    .cyber-header { padding: 12px 16px; background: #090814; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .cyber-chips { padding: 8px 12px; background: #110e24; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; gap: 6px; overflow-x: auto; }
+    .cyber-chip { background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(139, 92, 246, 0.3); color: #c4b5fd; font-size: 11px; padding: 4px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+    .cyber-chip:hover { background: var(--accent); color: #fff; }
+    .cyber-messages { flex: 1; padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    .msg { max-width: 85%; padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.4; }
+    .msg.user { align-self: flex-end; background: #6d28d9; color: #fff; }
+    .msg.bot { align-self: flex-start; background: #1f1b3a; border: 1px solid var(--border); color: #e9d5ff; }
+    .cyber-input-form { padding: 10px; background: #090814; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+    .cyber-input { flex: 1; background: #110e24; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 10px; color: #fff; outline: none; }
+    .cyber-send { background: var(--accent); border: none; color: #fff; font-weight: 700; padding: 0 14px; border-radius: 6px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">🛡️ AENEBRIS REVERSE PROXY & WAF</div>
+      <div class="badge">Functional Haskell Security Middleware</div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <h3>⚙️ Reverse Proxy Routing & Middleware</h3>
+        <div class="form-group">
+          <label>Inbound Match Path</label>
+          <input type="text" id="route" value="/api/v1/*" />
+        </div>
+        <div class="form-group">
+          <label>Upstream Target Cluster</label>
+          <input type="text" id="upstream" value="http://backend-cluster:8080" />
+        </div>
+        <div class="form-group">
+          <label>Security Middleware Active</label>
+          <select id="mw">
+            <option value="waf">WAF Filtering (XSS, SQLi, Command Injection)</option>
+            <option value="throttle">Token Bucket Rate Limiting (100 req/s)</option>
+            <option value="headers">HTTP Security Headers (HSTS, CSP, X-Frame)</option>
+            <option value="all">Full Zero-Trust Pipeline</option>
+          </select>
+        </div>
+        <button class="action-btn" onclick="testRoute()">🔀 Dispatch Synthetic Test Request</button>
+        <button class="action-btn" style="background: #334155; margin-top:6px;" onclick="checkUpstreams()">📊 Probe Upstream Health</button>
+      </div>
+
+      <div class="card">
+        <h3>📋 Proxy Access & Security Filter Log</h3>
+        <div class="terminal" id="term">
+          <div class="term-line" style="color: #64748b;">Aenebris Proxy daemon started. Listening on 0.0.0.0:8014</div>
+          <div class="term-line" style="color: #64748b;">Haskell Warp engine ready with non-blocking async sockets...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reverse Proxy AI Copilot -->
+  <div class="cyber-ai-widget-root">
+    <button class="cyber-ai-trigger" onclick="toggleChat()">
+      <span>🛡️</span> <span>WAF & Proxy AI Copilot</span>
+    </button>
+
+    <div class="cyber-ai-modal" id="chatModal">
+      <div class="cyber-header">
+        <div>
+          <strong style="font-size: 13px; color: #c4b5fd;">🛡️ Proxy & WAF Copilot</strong>
+          <div style="font-size: 10px; color: var(--muted);">Hindsight Vectorize • Aenebris Haskell Proxy</div>
+        </div>
+        <button onclick="toggleChat()" style="background:none; border:none; color:var(--muted); cursor:pointer; font-size:16px;">✕</button>
+      </div>
+      <div class="cyber-chips">
+        <button class="cyber-chip" onclick="askAI('Synthesize WAF regex filter for SQL injection in Haskell')">SQLi WAF Rule</button>
+        <button class="cyber-chip" onclick="askAI('Explain HTTP request smuggling mitigation in reverse proxy')">Smuggling Defense</button>
+        <button class="cyber-chip" onclick="askAI('How to implement async connection pooling in Haskell Warp?')">Haskell Warp Tuning</button>
+      </div>
+      <div class="cyber-messages" id="chatMsgs">
+        <div class="msg bot">👋 Greetings! I am your <strong>Reverse Proxy & WAF Security Copilot</strong> powered by <strong>Hindsight AI</strong>. I can generate WAF security rules, detect request smuggling, and optimize Haskell proxy middleware.</div>
+      </div>
+      <form class="cyber-input-form" onsubmit="handleSend(event)">
+        <input class="cyber-input" id="chatInput" placeholder="Ask about WAF rules, HTTP smuggling, or Haskell..." autocomplete="off"/>
+        <button type="submit" class="cyber-send">➤</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function log(text) {
+      const t = document.getElementById('term');
+      const div = document.createElement('div');
+      div.className = 'term-line';
+      div.innerHTML = text;
+      t.appendChild(div);
+      t.scrollTop = t.scrollHeight;
+    }
+
+    function testRoute() {
+      const route = document.getElementById('route').value;
+      const mw = document.getElementById('mw').value;
+      log(`<span style="color:#c4b5fd;">[PROXY]</span> Request GET ${route} received from 10.0.4.21`);
+      log(` - Middleware pipeline: <span style="color:#06b6d4;">[SanitizeHeaders -> RateLimit -> WAFInspection]</span>`);
+      log(` - Security audit: <span class="ok-status">CLEAN</span> (0 malicious signatures detected)`);
+      log(`<span class="ok-status">[FORWARDED]</span> Proxied to upstream backend-cluster:8080 in 1.12ms (HTTP 200 OK)`);
+    }
+
+    function checkUpstreams() {
+      log(`<span style="color:#10b981;">[HEALTHCHECK]</span> Upstream Nodes status:`);
+      log(` - node-01 (10.0.1.10:8080): <span class="ok-status">HEALTHY</span> [RTT: 0.3ms]`);
+      log(` - node-02 (10.0.1.11:8080): <span class="ok-status">HEALTHY</span> [RTT: 0.4ms]`);
+    }
+
+    function toggleChat() {
+      document.getElementById('chatModal').classList.toggle('active');
+    }
+    function askAI(p) {
+      document.getElementById('chatInput').value = p;
+      handleSend(new Event('submit'));
+    }
+    async function handleSend(e) {
+      if (e) e.preventDefault();
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const msgs = document.getElementById('chatMsgs');
+      const userDiv = document.createElement('div');
+      userDiv.className = 'msg user';
+      userDiv.textContent = text;
+      msgs.appendChild(userDiv);
+      input.value = '';
+      msgs.scrollTop = msgs.scrollHeight;
+
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'msg bot';
+      loadingDiv.textContent = 'Analyzing with Hindsight AI...';
+      msgs.appendChild(loadingDiv);
+
+      try {
+        const res = await fetch('https://api.hindsight.vectorize.io/v1/default/banks/cybersecurity-copilot/reflect', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer hsk_50b425c99734390d6a9f74d59a7f5e78_021b3c05d1268660'
+          },
+          body: JSON.stringify({
+            query: `[Context: Aenebris Functional Reverse Proxy in Haskell]\\n\\nUser Question: ${text}`
+          })
+        });
+        const data = await res.json();
+        loadingDiv.innerHTML = (data.text || 'No response').replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>').replace(/\\n/g, '<br/>');
+      } catch (err) {
+        loadingDiv.textContent = 'Error: ' + err.message;
+      }
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+  </script>
+</body>
+</html>
